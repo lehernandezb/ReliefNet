@@ -1,0 +1,11 @@
+{
+  "name": "reliefnet",
+  "private": true,
+  "description": "CPSC 471 Group 38 — ReliefNet. Convenience scripts; run from the repo root.",
+  "scripts": {
+    "install:all": "npm --prefix server install && npm --prefix client install",
+    "db:reset": "npm --prefix server run db:reset",
+    "server": "npm --prefix server run dev",
+    "client": "npm --prefix client run dev"
+  }
+}
