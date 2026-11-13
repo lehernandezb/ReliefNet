@@ -11,6 +11,8 @@
 --      Shelter.Accessible -> Is_Accessible,
 --      Medical_Info.Condition -> Medical_Condition
 --   6. Fixed typo: Is_Sys_Recommened -> Is_Sys_Recommended
+--   7. Group decisions: Admin has one Agency_ID; Victim.Facility_ID = current facility only; 
+--   Medical_Info.Facility_ID = facility holding the record.
 --
 -- Tables are created in dependency order (parents before children).
 -- =====================================================================
