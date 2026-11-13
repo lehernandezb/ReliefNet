@@ -2,9 +2,11 @@ import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { api } from '../../api/client'
 import DataTable from '../../components/DataTable'
+import Page, { Section } from '../../components/Page'
 import StatusBadge from '../../components/StatusBadge'
 import { useAuth } from '../../context/AuthContext'
 import { useApi } from '../../hooks/useApi'
+import { formatDateTime, PRIORITY_TINT } from '../../utils/format'
 
 export default function EmergencyDetail() {
   const { id } = useParams()
@@ -20,82 +22,110 @@ export default function EmergencyDetail() {
     resources.reload()
   }
 
-  if (emergency.error) return <p className="error">{emergency.error}</p>
-  if (!emergency.data) return <p>Loading…</p>
+  if (emergency.error) return <div className="page"><p className="error">{emergency.error}</p></div>
+  if (!emergency.data) return <div className="page"><p className="muted">Loading…</p></div>
   const e = emergency.data
+  // Highlight whichever update has the highest sequence number
+  const latestIndex = e.updates.reduce((best, u, i, all) => (u.Update_Seq > all[best].Update_Seq ? i : best), 0)
+
+  const zonePopulation = e.zones.reduce((n, z) => n + Number(z.Est_Population || 0), 0)
 
   return (
-    <>
-      <p><Link to="/dispatcher">← All emergencies</Link></p>
-      <h1>
-        {e.Name} <StatusBadge value={e.Priority} /> <StatusBadge value={e.Status} />
-      </h1>
-      <p className="muted">{e.Type} · {e.Location} · started {e.Start_Time}</p>
-
-      <div className="grid-2">
-        <section>
-          <h2>Recommended teams</h2>
-          {isDispatcher ? (
-            <AssignTeamForm
-              emergencyId={Number(id)}
-              recommendations={recs.data || []}
-              resources={resources.data || []}
-              onDone={reloadAll}
-            />
-          ) : (
-            <DataTable rows={recs.data} columns={[
-              { key: 'Team_Name', label: 'Team' },
-              { key: 'Distance_Km', label: 'km' },
-              { key: 'ETA_Min', label: 'ETA (min)' },
-            ]} />
-          )}
-        </section>
-
-        <section>
-          <h2>Status timeline</h2>
+    <Page
+      title={e.Name}
+      tint={PRIORITY_TINT[e.Priority]}
+      crumbs={<><Link to="/dispatcher">Emergencies</Link> / {e.Name}</>}
+      sub={
+        <>
+          <StatusBadge value={e.Priority} />
+          <StatusBadge value={e.Status} />
+          <span>{e.Type} at {e.Location}</span>
+        </>
+      }
+      stats={[
+        ['Started', formatDateTime(e.Start_Time)],
+        ['Teams assigned', e.assignments.length],
+        ['Evacuation zones', e.zones.length],
+        ['People in zones', zonePopulation.toLocaleString()],
+        ['Status updates', e.updates.length],
+      ]}
+      sections={[
+        ['teams', isDispatcher ? 'Dispatch a team' : 'Recommended teams'],
+        ['assignments', 'Assignments'],
+        ['zones', 'Evacuation zones'],
+        ['timeline', 'Timeline'],
+      ]}
+      aside={
+        <Section id="timeline" title="Status timeline">
           {isDispatcher && <StatusUpdateForm emergencyId={id} onDone={emergency.reload} />}
           <ul className="timeline">
-            {e.updates.map((u) => (
-              <li key={u.Update_Seq}>
-                <strong>#{u.Update_Seq} {u.New_Status}</strong> — {u.Notes}
-                <div className="muted small">{u.Time_Stamp} · {u.Posted_By || 'system'}</div>
+            {e.updates.map((u, i) => (
+              <li key={u.Update_Seq} className={i === latestIndex ? 'latest' : undefined}>
+                <strong>{u.New_Status}</strong>
+                {u.Notes && <div>{u.Notes}</div>}
+                <div className="muted small">{formatDateTime(u.Time_Stamp)}, {u.Posted_By || 'system'}</div>
               </li>
             ))}
           </ul>
-        </section>
-      </div>
+        </Section>
+      }
+    >
+      <Section
+        id="teams"
+        title={isDispatcher ? 'Dispatch a team' : 'Recommended teams'}
+        note="Available teams, closest first. The first one is the system recommendation."
+      >
+        {isDispatcher ? (
+          <AssignTeamForm
+            emergencyId={Number(id)}
+            recommendations={recs.data || []}
+            resources={resources.data || []}
+            onDone={reloadAll}
+          />
+        ) : (
+          <DataTable rows={recs.data} columns={[
+            { key: 'Team_Name', label: 'Team', render: (r) => <span className="primary">{r.Team_Name}</span> },
+            { key: 'Specialty', label: 'Specialty' },
+            { key: 'Distance_Km', label: 'Distance (km)' },
+            { key: 'ETA_Min', label: 'ETA (min)' },
+          ]} />
+        )}
+      </Section>
 
-      <h2>Dispatch assignments</h2>
-      <DataTable
-        rows={e.assignments}
-        empty="No teams assigned yet."
-        columns={[
-          { key: 'Assignment_ID', label: '#' },
-          { key: 'Team_Name', label: 'Team' },
-          { key: 'Priority', label: 'Priority', render: (a) => <StatusBadge value={a.Priority} /> },
-          { key: 'Status', label: 'Status', render: (a) => <StatusBadge value={a.Status} /> },
-          { key: 'ETA', label: 'ETA (min)' },
-          { key: 'Is_Sys_Recommended', label: 'System pick', render: (a) => (a.Is_Sys_Recommended ? '✓' : '') },
-          { key: 'Resources', label: 'Resources' },
-          ...(isDispatcher ? [{
-            key: 'actions', label: '', render: (a) => (
-              <AssignmentStatusSelect assignment={a} onDone={reloadAll} />
-            ),
-          }] : []),
-        ]}
-      />
+      <Section id="assignments" title="Dispatch assignments">
+        <DataTable
+          rows={e.assignments}
+          empty="No teams assigned yet."
+          columns={[
+            { key: 'Assignment_ID', label: '#' },
+            { key: 'Team_Name', label: 'Team', render: (a) => <span className="primary">{a.Team_Name}</span> },
+            { key: 'Priority', label: 'Priority', render: (a) => <StatusBadge value={a.Priority} /> },
+            { key: 'Status', label: 'Status', render: (a) => <StatusBadge value={a.Status} /> },
+            { key: 'ETA', label: 'ETA (min)' },
+            { key: 'Is_Sys_Recommended', label: 'System pick', render: (a) => (a.Is_Sys_Recommended ? 'Yes' : 'No') },
+            { key: 'Resources', label: 'Resources' },
+            ...(isDispatcher ? [{
+              key: 'actions', label: 'Update', render: (a) => (
+                <AssignmentStatusSelect assignment={a} onDone={reloadAll} />
+              ),
+            }] : []),
+          ]}
+        />
+      </Section>
 
-      <h2>Evacuation zones</h2>
-      <DataTable
-        rows={e.zones}
-        columns={[
-          { key: 'Zone_No', label: 'Zone' },
-          { key: 'Name', label: 'Name' },
-          { key: 'Status', label: 'Status', render: (z) => <StatusBadge value={z.Status} /> },
-          { key: 'Est_Population', label: 'Est. population' },
-        ]}
-      />
-    </>
+      <Section id="zones" title="Evacuation zones">
+        <DataTable
+          rows={e.zones}
+          empty="No evacuation zones for this emergency."
+          columns={[
+            { key: 'Zone_No', label: 'Zone' },
+            { key: 'Name', label: 'Name', render: (z) => <span className="primary">{z.Name}</span> },
+            { key: 'Status', label: 'Status', render: (z) => <StatusBadge value={z.Status} /> },
+            { key: 'Est_Population', label: 'Est. population', render: (z) => Number(z.Est_Population || 0).toLocaleString() },
+          ]}
+        />
+      </Section>
+    </Page>
   )
 }
 
@@ -135,15 +165,38 @@ function AssignTeamForm({ emergencyId, recommendations, resources, onDone }) {
 
   return (
     <form className="card" onSubmit={submit}>
-      {recommendations.map((r, i) => (
-        <label key={r.Team_ID} className="radio">
-          <input type="radio" name="team" value={r.Team_ID} checked={teamId === String(r.Team_ID)} onChange={(e) => setTeamId(e.target.value)} />
-          <span>
-            <strong>{r.Team_Name}</strong> ({r.Specialty}, {r.Agency}) — {r.Distance_Km} km, ETA {r.ETA_Min} min
-            {i === 0 && <span className="badge green">Recommended</span>}
-          </span>
-        </label>
-      ))}
+      <fieldset>
+        <legend>Team</legend>
+        <div className="options">
+          {recommendations.map((r, i) => (
+            <label key={r.Team_ID} className="option">
+              <input type="radio" name="team" value={r.Team_ID} checked={teamId === String(r.Team_ID)} onChange={(e) => setTeamId(e.target.value)} />
+              <span className="grow">
+                <strong>{r.Team_Name}</strong> <span className="muted">{r.Specialty}, {r.Agency}</span>
+              </span>
+              {i === 0 && <span className="badge green">Recommended</span>}
+              <span className="figure">{r.Distance_Km} km, {r.ETA_Min} min</span>
+            </label>
+          ))}
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Attach resources</legend>
+        {resources.length ? (
+          <div className="options">
+            {resources.map((r) => (
+              <label key={r.Resource_ID} className="option">
+                <input type="checkbox" checked={resourceIds.includes(r.Resource_ID)} onChange={() => toggle(r.Resource_ID)} />
+                <span className="grow">{r.Name}</span>
+                <span className="figure">{r.Kind}, {r.Owner_Name}</span>
+              </label>
+            ))}
+          </div>
+        ) : (
+          <p className="muted small">No resources are free right now.</p>
+        )}
+      </fieldset>
 
       <label>
         Priority
@@ -152,18 +205,8 @@ function AssignTeamForm({ emergencyId, recommendations, resources, onDone }) {
         </select>
       </label>
 
-      <fieldset>
-        <legend>Attach resources</legend>
-        {resources.map((r) => (
-          <label key={r.Resource_ID} className="checkbox">
-            <input type="checkbox" checked={resourceIds.includes(r.Resource_ID)} onChange={() => toggle(r.Resource_ID)} />
-            {r.Name} <span className="muted small">({r.Kind}, {r.Owner_Name})</span>
-          </label>
-        ))}
-      </fieldset>
-
       {error && <p className="error">{error}</p>}
-      <button type="submit" disabled={!teamId}>Dispatch team</button>
+      <div><button type="submit" disabled={!teamId}>Dispatch team</button></div>
     </form>
   )
 }

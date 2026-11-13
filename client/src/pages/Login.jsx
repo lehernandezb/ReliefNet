@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
+import Logo from '../components/Logo'
 import { HOME_BY_ROLE, useAuth } from '../context/AuthContext'
 
 export default function Login() {
@@ -27,8 +28,8 @@ export default function Login() {
   return (
     <div className="auth-page">
       <form className="card auth-card" onSubmit={onSubmit}>
-        <h1>ReliefNet</h1>
-        <p className="muted">Emergency response coordination</p>
+        <div className="brand"><Logo /></div>
+        <h1>{mode === 'login' ? 'Log in to ReliefNet' : 'Create your ReliefNet account'}</h1>
 
         {mode === 'register' && (
           <div className="row">
@@ -43,13 +44,17 @@ export default function Login() {
         <label>Password<input type="password" value={form.password} onChange={set('password')} required /></label>
 
         {error && <p className="error">{error}</p>}
-        <button type="submit">{mode === 'login' ? 'Log in' : 'Create account'}</button>
+        <button type="submit" className="block">{mode === 'login' ? 'Log in' : 'Create account'}</button>
 
-        <button type="button" className="link" onClick={() => setMode(mode === 'login' ? 'register' : 'login')}>
-          {mode === 'login' ? 'Need help? Create a public account' : 'Already have an account? Log in'}
-        </button>
+        <hr />
+        <p className="muted center">
+          {mode === 'login' ? 'Need help in an emergency? ' : 'Already have an account? '}
+          <button type="button" className="link" onClick={() => setMode(mode === 'login' ? 'register' : 'login')}>
+            {mode === 'login' ? 'Create a public account' : 'Log in'}
+          </button>
+        </p>
         {mode === 'login' && (
-          <p className="muted small">Demo users: admin / dispatcher / client — password123</p>
+          <p className="muted small center">Demo users: admin, dispatcher or client. Password: password123</p>
         )}
       </form>
     </div>

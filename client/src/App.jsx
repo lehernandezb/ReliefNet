@@ -2,6 +2,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import ProtectedRoute from './components/ProtectedRoute'
 import { AuthProvider } from './context/AuthContext'
 import Login from './pages/Login'
+import Settings from './pages/Settings'
 import AdminDashboard from './pages/admin/AdminDashboard'
 import ClientHome from './pages/client/ClientHome'
 import DispatcherDashboard from './pages/dispatcher/DispatcherDashboard'
@@ -25,6 +26,11 @@ export default function App() {
 
           <Route element={<ProtectedRoute roles={['Admin']} />}>
             <Route path="/admin" element={<AdminDashboard />} />
+          </Route>
+
+          {/* Any signed-in role */}
+          <Route element={<ProtectedRoute />}>
+            <Route path="/settings" element={<Settings />} />
           </Route>
 
           <Route path="*" element={<Navigate to="/login" replace />} />

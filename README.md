@@ -30,7 +30,7 @@ ReliefNet/
 │       ├── api/client.js         # fetch wrapper (adds JWT)
 │       ├── context/AuthContext   # login state
 │       ├── hooks/useApi.js       # load data from a GET endpoint
-│       ├── components/           # Navbar, DataTable, StatusBadge, ProtectedRoute
+│       ├── components/           # Sidebar, Page, DataTable, StatusBadge, ProtectedRoute
 │       └── pages/{client,dispatcher,admin}/
 └── docs/api.md         # endpoint contract — update it when you add a route
 ```

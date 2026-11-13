@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import { api } from '../../api/client'
 import DataTable from '../../components/DataTable'
+import Page, { Section } from '../../components/Page'
 import StatusBadge from '../../components/StatusBadge'
 import { useApi } from '../../hooks/useApi'
+import { formatDateTime } from '../../utils/format'
 
 const REQUEST_TYPES = ['Evacuation', 'Medical', 'Shelter', 'Supplies', 'Rescue', 'Other']
 
@@ -12,6 +14,8 @@ export default function ClientHome() {
   const shelters = useApi('/facilities')
   const [form, setForm] = useState({ emergencyId: '', type: 'Evacuation', location: '', description: '' })
   const [msg, setMsg] = useState('')
+
+  const openShelters = shelters.data?.filter((f) => f.Kind === 'Shelter' && f.Spaces_Left > 0)
 
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value })
 
@@ -29,8 +33,22 @@ export default function ClientHome() {
   }
 
   return (
-    <>
-      <h1>Request help</h1>
+    <Page
+      title="Request help"
+      tint="#3d7ea6"
+      sub="Tell us what you need. A dispatcher reviews every request."
+      stats={[
+        ['Requests sent', requests.data?.length],
+        ['Still open', requests.data?.filter((r) => r.Status === 'Open' || r.Status === 'In Progress').length],
+        ['Shelters with space', openShelters?.length],
+      ]}
+      sections={[
+        ['new', 'New request'],
+        ['mine', 'My requests'],
+        ['shelters', 'Shelters with space'],
+      ]}
+    >
+      <Section id="new" title="New request">
       <form className="card" onSubmit={submit}>
         <div className="row">
           <label>
@@ -52,33 +70,38 @@ export default function ClientHome() {
         <label>Your location<input value={form.location} onChange={set('location')} placeholder="Address or landmark" /></label>
         <label>What do you need?<textarea rows={3} value={form.description} onChange={set('description')} /></label>
         {msg && <p className="muted">{msg}</p>}
-        <button type="submit">Submit request</button>
+        <div><button type="submit">Send request</button></div>
       </form>
+      </Section>
 
-      <h2>My requests</h2>
+      <Section id="mine" title="My requests">
       <DataTable
         rows={requests.data}
-        empty="You haven't submitted any requests."
+        empty="You haven't sent any requests yet."
         columns={[
           { key: 'Request_ID', label: '#' },
-          { key: 'Emergency_Name', label: 'Emergency' },
+          { key: 'Emergency_Name', label: 'Emergency', render: (r) => <span className="primary">{r.Emergency_Name}</span> },
           { key: 'Type', label: 'Type' },
           { key: 'Status', label: 'Status', render: (r) => <StatusBadge value={r.Status} /> },
-          { key: 'Submitted_Date', label: 'Submitted' },
+          { key: 'Submitted_Date', label: 'Sent', render: (r) => formatDateTime(r.Submitted_Date) },
         ]}
       />
 
-      <h2>Shelters with space</h2>
+      </Section>
+
+      <Section id="shelters" title="Shelters with space">
       <DataTable
-        rows={shelters.data?.filter((f) => f.Kind === 'Shelter' && f.Spaces_Left > 0)}
+        rows={openShelters}
+        empty="No shelters have space right now."
         columns={[
-          { key: 'Name', label: 'Shelter' },
+          { key: 'Name', label: 'Shelter', render: (r) => <span className="primary">{r.Name}</span> },
           { key: 'Address', label: 'Address' },
           { key: 'Spaces_Left', label: 'Spaces left' },
           { key: 'Pet_Friendly', label: 'Pets', render: (r) => (r.Pet_Friendly ? 'Yes' : 'No') },
           { key: 'Is_Accessible', label: 'Accessible', render: (r) => (r.Is_Accessible ? 'Yes' : 'No') },
         ]}
       />
-    </>
+      </Section>
+    </Page>
   )
 }

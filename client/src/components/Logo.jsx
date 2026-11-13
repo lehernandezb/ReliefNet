@@ -1,0 +1,9 @@
+/** ReliefNet mark: an "R" monogram on a solid tile */
+export default function Logo() {
+  return (
+    <svg viewBox="0 0 32 32" aria-hidden="true">
+      <rect width="32" height="32" rx="3" fill="var(--accent)" />
+      <path d="M11 25V7.5h6.25a5.25 5.25 0 0 1 0 10.5H11m6.5 0 4.5 7" fill="none" stroke="var(--on-accent)" strokeWidth="3.5" strokeLinejoin="miter" />
+    </svg>
+  )
+}

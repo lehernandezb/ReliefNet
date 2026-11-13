@@ -6,7 +6,7 @@
  *   ]} />
  */
 export default function DataTable({ rows, columns, empty = 'Nothing here yet.' }) {
-  if (!rows?.length) return <p className="muted">{empty}</p>
+  if (!rows?.length) return <p className="empty">{empty}</p>
 
   return (
     <div className="table-wrap">
